@@ -1,10 +1,10 @@
 #~~#	#~+~~+~#	#~~#
-#LOG	00:00:00	Activity Log for SAAGA V0.5.3: Thu Nov 19 14:24:48 2020
+#LOG	00:00:00	Activity Log for SAAGA V0.5.4: Mon Dec  7 15:00:48 2020
 #DIR	00:00:00	Run from directory: /Users/redwards/onedrive/OneDrive - UNSW/projects/SAAGA-Nov20/githubdev/docs
 #ARG	00:00:00	Commandline arguments: basefile=saaga dochtml newlog
 #CMD	00:00:00	Full Command List: log=saaga.log basefile=saaga dochtml newlog
 #VIO	00:00:00	Verbosity: 1; Interactivity: 0.
 #RMD	00:00:00	RMarkdown SAAGA documentation output to saaga.docs.Rmd
 #RCMD	00:00:00	Rscript -e 'library(rmarkdown); rmarkdown::render("saaga.docs.Rmd", "html_document")'
-#RCMD	00:00:01	saaga.docs.html generated from saaga.docs.Rmd
-#LOG	00:00:01	SAAGA V0.5.3 End: Thu Nov 19 14:24:49 2020
+#RCMD	00:00:04	saaga.docs.html generated from saaga.docs.Rmd
+#LOG	00:00:04	SAAGA V0.5.4 End: Mon Dec  7 15:00:53 2020

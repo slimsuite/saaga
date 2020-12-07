@@ -19,8 +19,8 @@
 """
 Module:       SAAGA
 Description:  Summarise, Annotate & Assess Genome Annotations
-Version:      0.5.3
-Last Edit:    19/11/20
+Version:      0.5.4
+Last Edit:    20/11/20
 Citation:     Edwards RJ et al. (2020), bioRxiv https://doi.org/10.1101/2020.11.11.379073
 GitHub:       http://github.com/slimsuite/saaga
 Copyright (C) 2020  Richard J. Edwards - See source code for GNU License Notice
@@ -99,6 +99,7 @@ def history():  ### Program History - only a method for PythonWin collapsing! ##
     # 0.5.1 - Tidied some of the code and added some identifier checks for GFF and Fasta input.
     # 0.5.2 - Fixed issue with swapped transcript and exon feature identifiers following v0.5.1 tidying.
     # 0.5.3 - Added pident compatibility with updated mmseq2. Updated documentation. Modified some stats calculations.
+    # 0.5.4 - Added restricted feature parsing from GFF. Fixed GFF type input bug.
     '''
 #########################################################################################################################
 def todo():     ### Major Functionality to Add - only a method for PythonWin collapsing! ###
@@ -121,7 +122,7 @@ def todo():     ### Major Functionality to Add - only a method for PythonWin col
 #########################################################################################################################
 def makeInfo(): ### Makes Info object which stores program details, mainly for initial print to screen.
     '''Makes Info object which stores program details, mainly for initial print to screen.'''
-    (program, version, last_edit, copy_right) = ('SAAGA', '0.5.3', 'November 2020', '2020')
+    (program, version, last_edit, copy_right) = ('SAAGA', '0.5.4', 'November 2020', '2020')
     description = 'GeMoMa output processing module'
     author = 'Dr Richard J. Edwards.'
     comments = ['This program is still in development and has not been published.',rje_obj.zen()]
@@ -187,7 +188,7 @@ class GeMoMa(rje_obj.RJE_Object):
     Str:str
     - CDSIn=FILE      : Optional transcript annotation file for renaming and/or longest isoform extraction [annotation.fna]
     - GFFIn=FILE      : Protein annotation GFF file [annotation.gff]
-    - GGFGene=X       : Label for GFF gene feature type ['gene']
+    - GFFGene=X       : Label for GFF gene feature type ['gene']
     - GFFCDS=X        : Label for GFF CDS feature type ['CDS']
     - GFFmRNA=X       : Label for GFF mRNA feature type ['mRNA']
     - MMHitMap=TSV    : Tab-delimited output for query versus reference MMseq2 search (see docs) [$REFBASE.$SEQBASE.mmseq.tsv]
@@ -236,7 +237,7 @@ class GeMoMa(rje_obj.RJE_Object):
     def _setAttributes(self):   ### Sets Attributes of Object
         '''Sets Attributes of Object.'''
         ### ~ Basics ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
-        self.strlist = ['CDSIn','GFFIn','GGFGene','GGFCDS','GGFmRNA','MMHitMap','MMQryMap','MMSearch','MMSeqDB','RefDB','RefProt','SeqIn','TmpDir']
+        self.strlist = ['CDSIn','GFFIn','GFFGene','GFFCDS','GFFmRNA','MMHitMap','MMQryMap','MMSearch','MMSeqDB','RefDB','RefProt','SeqIn','TmpDir']
         self.boollist = ['Annotate','Assess','BatchRun','DocHTML','Longest','MMseqs','Summarise']
         self.intlist = ['TopHits']
         self.numlist = ['MinGlobID']
@@ -246,7 +247,7 @@ class GeMoMa(rje_obj.RJE_Object):
         self.objlist = ['SeqIn','RefProt']
         ### ~ Defaults ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
         self._setDefaults(str='None',bool=False,int=0,num=0.0,obj=None,setlist=True,setdict=True,setfile=True)
-        self.setStr({'CDSIn':'annotation.fna','GGFGene':'gene','GGFCDS':'CDS','GGFmRNA':'mRNA',
+        self.setStr({'CDSIn':'annotation.fna','GFFGene':'gene','GFFCDS':'CDS','GFFmRNA':'mRNA',
                      'GFFIn':'annotation.gff','MMSearch':'./mmsearch/','MMSeqDB':'./mmseqdb/',
                      'RefProt':'refproteome.fasta','SeqIn':'annotation.fasta','TmpDir':'./tmp/'})
         self.setBool({'Annotate':False,'Assess':False,'BatchRun':True,'DocHTML':False,'Longest':False,'MMseqs':True,'Summarise':True})
@@ -270,7 +271,7 @@ class GeMoMa(rje_obj.RJE_Object):
                 self._forkCmd(cmd)  # Delete if no forking
                 ### Class Options (No need for arg if arg = att.lower()) ### 
                 #self._cmdRead(cmd,type='str',att='Att',arg='Cmd')  # No need for arg if arg = att.lower()
-                self._cmdReadList(cmd,'str',['GGFGene','GGFCDS','GGFmRNA'])   # Normal strings
+                self._cmdReadList(cmd,'str',['GFFGene','GFFCDS','GFFmRNA'])   # Normal strings
                 self._cmdReadList(cmd,'path',['MMSearch','MMSeqDB','TmpDir'])  # String representing directory path
                 self._cmdReadList(cmd,'file',['CDSIn','GFFIn','RefDB','RefProt','SeqIn'])  # String representing file path
                 #self._cmdReadList(cmd,'date',['Att'])  # String representing date YYYY-MM-DD
@@ -794,8 +795,9 @@ class GeMoMa(rje_obj.RJE_Object):
                 # CHINACHR29.01   GAF     gene    74976   128160  .       -       .       Name=BASCHINAG22344;ID=BASCHINAG22344;transcripts=1;complete=1;maxEvidence=1;combinedEvidence=1
                 # CHINACHR29.01   GeMoMa  mRNA    74976   128160  .       -       .       Name=BASCHINAG22344.1;ID=BASCHINAG22344.1;ref-gene=cattle_gene97;aa=107;score=117;ce=2;rce=2;pAA=0.6241;iAA=0.3684;nps=0;start=M;stop=*;evidence=1;Parent=BASCHINAG22344;sumWeight=1.0;
                 # CHINACHR29.01   GeMoMa  CDS     128029  128160  .       -       0       Parent=BASCHINAG22344.1
+                ftypes = [self.getStr('GFFGene'),self.getStr('GFFmRNA'),self.getStr('GFFCDS'),'gene','mRNA','prediction','CDS']
                 self.obj['GFF'].list['Attributes'] = ['Name','ID','Parent']
-                self.obj['GFF'].parseGFF(self.getStr('GFFIn')) #,parseattributes=False)
+                self.obj['GFF'].parseGFF(self.getStr('GFFIn'),ftypes=ftypes) #,parseattributes=False)
                 self.printLog('#GFF','GFF Fields: %s' % ', '.join(self.db('features').fields()))
                 ## ~ [2a] Reduce fields ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ##
                 gffdb = self.db('features')

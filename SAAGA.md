@@ -1,7 +1,7 @@
 # SAAGA: GeMoMa output processing module
 
 ```
-SAAGA v0.5.3
+SAAGA v0.5.4
 ```
 
 For a better rendering and navigation of this document, please download and open [`./docs/saaga.docs.html`](./docs/saaga.docs.html), or visit <https://slimsuite.github.io/saaga/>.
