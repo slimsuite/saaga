@@ -1,7 +1,7 @@
 ---
-title: "SAAGA V0.5.4 Documentation"
+title: "SAAGA V0.7.9 Documentation"
 author: "Richard J. Edwards"
-date: "2020-12-07"
+date: "2024-09-19"
 output:
   html_document:
     css: http://www.slimsuite.unsw.edu.au/stylesheets/slimhtml.css
@@ -36,14 +36,25 @@ The different run modes are set using a set of `mode=T/F` flags (or simply addin
 * `assess` = Assess annotation using reference annotation (e.g. a reference organism proteome)
 * `annotate` = Rename annotation using reference annotation (could be Swissprot)
 * `longest` = Extract the longest protein per gene
-* `mmseq` = Run the mmseq2 steps in preparation for further analysis
-* `summarise` = Summarise annotation from a GFF file
+* `mmseq` = Run the mmseq2 steps in preparation for further analysis (default)
+* `summarise` = Summarise annotation from a GFF file (default)
+* `taxonomy` = Summarise taxonomic assignments for contamination assessments
 
-See <https://slimsuite.github.io/saaga/> for details of each mode. General SLiMSuite run documentation can be
-found at <https://github.com/slimsuite/SLiMSuite>.
+See <https://slimsuite.github.io/saaga/> for details of each mode. Multiple modes without conflicting commandline options can be run together. Note that running `taxonomy` mode will switch off the default `mmseq` and `summarise` modes, unless reactivated with additional commands.
+General SLiMSuite run documentation can be found at <https://github.com/slimsuite/SLiMSuite>.
 
 SAAGA is available as part of SLiMSuite, or via a standalone GitHub repo at
 <https://github.com/slimsuite/saaga>.
+
+## Citing SAAGA
+
+SAAGA `summarise` was introduced with basic annotation summarise functions (v0.4.0) in:
+
+* Edwards RJ et al. (2021), [BMC Genomics 22, 188](https://doi.org/10.1186/s12864-021-07493-6).
+
+For `assess` mode (v0.6.0), please cite:
+
+* Stuart KC et al. (2021), bioRvix https://doi.org/10.1101/2021.04.07.438753. This forms the basis of the explanation for some of the statistics, below.
 
 ---
 
@@ -51,14 +62,14 @@ SAAGA is available as part of SLiMSuite, or via a standalone GitHub repo at
 
 SAAGA is written in Python 2.x and can be run directly from the commandline:
 
-    python $CODEPATH/diploidocus.py [OPTIONS]
+    python $CODEPATH/saaga.py [OPTIONS]
 
 If running as part of [SLiMSuite](http://slimsuite.blogspot.com/), `$CODEPATH` will be the SLiMSuite `tools/`
 directory. If running from the standalone [SAAGA git repo](https://github.com/slimsuite/saaga), `$CODEPATH`
 will be the path the to `code/` directory. Please see details in the [SAAGA git repo](https://github.com/slimsuite/saaga)
 for running on example data.
 
-For `assess`, `annotate` and `mmseq` modes, [MMseqs2](https://github.com/soedinglab/MMseqs2) must be installed and
+For `assess`, `annotate`, `mmseq` and `taxonomy` modes, [MMseqs2](https://github.com/soedinglab/MMseqs2) must be installed and
 either added to the environment `$PATH`.
 
 ## Commandline options
@@ -72,20 +83,23 @@ use commandline options, including setting default values with **INI files**.
 seqin=FILE      : Protein annotation file to assess [annotation.faa]
 gffin=FILE      : Protein annotation GFF file [annotation.gff]
 cdsin=FILE      : Optional transcript annotation file for renaming and/or longest isoform extraction [annotation.fna]
+assembly=FILE   : Optional genome fasta file (required for some outputs) [None]
 refprot=FILE    : Reference proteome for mapping data onto [refproteome.fasta]
-refdb=FILE      : Reference proteome MMseq2 database (over-rule mmseqdb path) []
-mmseqdb=PATH    : Directory in which to find/create mmseqs2 databases [./mmseqdb/]
-mmsearch=PATH   : Directory in which to find/create mmseqs2 databases [./mmsearch/]
+refdb=FILE      : Reference proteome MMseqs2 database (over-rules mmseqdb path) []
+mmseqdb=PATH    : Directory in which to find/create MMseqs2 databases [./mmseqdb/]
+mmsearch=PATH   : Directory in which to find/create MMseqs2 databases [./mmsearch/]
 basefile=X      : Prefix for output files [$SEQBASE.$REFBASE]
 gffgene=X       : Label for GFF gene feature type ['gene']
 gffcds=X        : Label for GFF CDS feature type ['CDS']
 gffmrna=X       : Label for GFF mRNA feature type ['mRNA']
+gffdesc=X       : GFF output field label for annotated proteins (e.g. note, product) [product]
 ### ~ Run mode options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
 annotate=T/F    : Rename annotation using reference annotation (could be Swissprot) [False]
 assess=T/F      : Assess annotation using reference annotation [False]
 longest=T/F     : Extract longest protein per gene into *.longest.faa [False]
-mmseqs=T/F      : Run the mmseq2 steps in preparation for further analysis [True]
+mmseqs=T/F      : Run the MMseqs2 steps in preparation for further analysis [True]
 summarise=T/F   : Summarise annotation from GFF file [True]
+taxonomy=T/F    : Summarise taxonomic assignments for contamination assessments [False]
 dochtml=T/F     : Generate HTML SAAGA documentation (*.docs.html) instead of main run [False]
 ### ~ Search and filter options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
 tophits=INT     : Restrict mmseqs hits to the top X hits [250]
@@ -96,6 +110,17 @@ mmhitmap=TSV    : Tab-delimited output for reference versus query search (see do
 ### ~ Batch Run options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
 batchseq=FILELIST   : List of seqin=FILE annotation proteomes for comparison
 batchref=FILELIST   : List of refprot=FILE reference proteomes for comparison
+### ~ Taxonomy options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+taxdb=FILE      : MMseqs2 taxonomy database for taxonomy assignment [seqTaxDB]
+taxbase=X       : Output prefix for taxonomy output [$SEQBASE.$TAXADB]
+taxorfs=T/F     : Whether to generate ORFs from assembly if no seqin=FILE given [True]
+taxbyseq=T/F    : Whether to parse and generate taxonomy output for each assembly (GFF) sequence [True]
+taxbyseqfull=T/F: Whether generate full easy taxonomy report outputs for each assembly (GFF) sequence [False]
+taxsubsets=FILELIST : Files (fasta/id) with sets of assembly input sequences (matching GFF) to summarise []
+taxlevels=LIST  : List of taxonomic levels to report (* for superkingdom and below) ['*']
+taxwarnrank=X   : Taxonomic rank (and above) to warn when deviating for consensus [family]
+bestlineage=T/F : Whether to enforce a single lineage for best taxa ratings [True]
+mintaxnum=INT   : Minimum gene count in main dataset to keep taxon, else merge with higher level [2]
 ### ~ System options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
 forks=X         : Number of parallel sequences to process at once [0]
 killforks=X     : Number of seconds of no activity before killing all remaining forks. [36000]
@@ -122,7 +147,7 @@ Unless `mmseqs` is the only active run mode, the `gffin=FILE` GFF file will also
 genes, transcripts and exons are extracted based on the feature type. By default, SAAGA expects GeMoMa annotation
 with `gene`, `mRNA` and `CDS` feature types for genes, transcripts and exons, respectively. If `mRNA` features are
 not found, `prediction` features will be parsed as transcripts. These can be over-ridden with `gffgene=X`,
-`gffmrna=X` and `gffcds=X`.
+`gffmrna=X` and `gffcds=X`. An optional `assembly=FILE` genome fasta file can also be provided, in which case the sequence names must match those in the GFF.
 
 Protein names in the `seqin=FILE` are mapped onto the `ID=X` identifiers for transcripts in the GFF file. Transcript
 `Parent=X` identifiers should map onto gene `ID=X` identifiers, and CDS `Parent=X` identifiers should map onto
@@ -132,6 +157,12 @@ If `seqin=FILE` protein names and transcript IDs do not match, [https://github.c
 be used to generate the protein fasta file:
 
     gffread -y $PROTEIN_FASTA -g $GENOME $GFF
+
+The exception to this is that `taxonomy` mode can be run in one of two simplified modes, depending on the input given. If only `seqin=FILE` is provided (without gffin=FILE), it will be assumed that (1) each protein is encoded by a separate gene, and (2) protein names are in the form `sequence-name.X.Y`. If no `seqin=FILE` is provided, then a simple ORF dataset will be generated of all ORFs (in 6 reading frames) of 100+ amino acids mid-sequence, or 50+ amino acids at a sequence end. These will be named `sequence.RF.ORF`. In each case, the genome assembly must be provided with `assembly=FILE`.
+
+### Taxonomy mode
+
+The `taxonomy` mode in SAAGA can be thought of as a separate tool. (And nearly was!) If `taxonomy` mode is active, this will be run next. See the run modes section below, for details. Unless another mode has been actively set, SAAGA will then exit after completing taxonomy mode.
 
 ### MMseqs Searches
 
@@ -164,24 +195,22 @@ For transcript/protein annotation, a copy of the annotation versus reference mms
 
     query,target,raw,tcov,pident,theader
 
-
 The gene and transcripts tables are indexed on `id` for mapping onto other data.
 
 ---
 
 # SAAGA Outputs
 
-In addition to outputs generated by mmseqs, the main SAAGA outputs are:
+In addition to outputs generated by mmseqs (and a `*.sys.log` file logging any mmseqs runs), the main SAAGA outputs are:
 
-* `*.log` = the main SAAGA log file containing
-* `*.sys.log` = logging of mmseqs runs.
-* `*.gene.tdt` = summary information per annotated gene
+* `*.log` = the main SAAGA log file containing details of the run. (All modes)
+* `*.gene.tdt` = summary information per annotated gene. (`summarise` mode)
 * `*.proteins.tdt` = summary information per annotated protein
 * `*.refprot.tdt` = summary information per reference protein (Assessment mode)
 * `*.stats.tdt`= summary statistics for full annotation
 
-The fields for the main tables are given below. Details will be added in a future release. Please contact the
-author in the meantime if anything is not clear.
+The fields for the main tables are given below. Details for some fields are provided in the **SAAGA run modes** section, below. Please contact the
+author if anything is not clear.
 
 
 ## Gene table [*.gene.tdt]
@@ -238,7 +267,7 @@ author in the meantime if anything is not clear.
 * `refdesc` = Description of reference protein
 * `f1` = F1 score = 2 x Pr x Recall / (Pr + Recall) = 2 x refcov x protcov  / (refcov + protcov)
 
-## Summary statistics table
+## Summary statistics table [*.stats.tdt]
 
 * `seqin` = Input annotation proteome
 * `refdb` = Reference database
@@ -265,62 +294,224 @@ author in the meantime if anything is not clear.
 
 # SAAGA run modes
 
-Details for the main SAAGA run modes will be added below.
+SAAGA can execute one or more different run modes that will generate different subsets of the main outputs. At its core, SAAGA (v0.7.x+) has four different underlying motivations:
+
+1. Compress protein/transcript annotation by gene to generate non-redundant summaries and/or sequences. In `summarise` mode, the `gene`, `proteins` and `stats` tables will be generated, albeit with fewer fields that in `assess` mode. If `longest` mode is activated, the longest protein sequence per gene will be output to `*.longest.faa` and the corresponding transcripts (if `cdsin=FILE` given) to `*.longest.fna`.
+2. Map annotation onto a reference proteome and make quality assessments. In `assess` mode, `refdb=FILE` should provide a single high-quality reference proteome. This will work best if the reference proteome is non-redundant and contains a single protein isoform per gene.
+3. Functional annotation of predicted proteins. In `annotate` mode, `refdb=FILE` should be a comprehensive resource of reliably annotated (named) protein sequences, e.g. SwissProt. This is not compatible with `assess` mode.
+4. Taxonomic assignment of assembly sequences. In `taxonomy` mode, the genome annotation (or crude ORF predictions) are used in conjunction with mmseqs2 `easy-taxonomy` to make taxonomic assigments for (1) genes, (2) assembly scaffolds, (3) the whole assembly, and (4) specified assembly subsets. Any genes or sequences violating the consensus taxonomy will be flagged. (See `taxonomy` mode for details.)
 
 **NOTE:** SAAGA is under development and documentation might be a bit sparse. Please contact the author or
 post an issue on GitHub if you have any questions.
 
 ---
 
+## Annotation summarise mode [summarise=T]
+
+This mode will summarise the annotation from a GFF file. This is also executed as part of the `assess` mode. It will generate partial assessment statistics versus the `refdb=FILE` reference proteome, but will not perform any reciprocal searches or completeness analysis.
+
+See **SAAGA Outputs** and **Annotation assessment mode** for details of the statistics generated.
+
+---
+
 ## Annotation assessment mode [assess=T]
 
 This mode compares the predicted protein sequences from an annotation to a reference proteome and asseses its
-quality and completeness.
+quality and completeness. SAAGA performs a reciprocal MMseqs2 search against `refdb=FILE`, which should be a high-quality non-redundant reference proteome. The best hits are identified and then used to calculate coverage ratios between query and hit proteins as a means of annotation assessment. In general, metrics will be closer to 1 (or 100%) for complete annotations and assemblies without duplications. Although the maximum achievable value for these metrics will generally be unknown, comparative values can be used to assess improvement in assembly and/or annotation, akin to BUSCO scores.
 
-_Details to follow._
+The main assessment statistics generated by SAAGA are:
 
-**NOTE:** SAAGA is still under development. MMseqs2 stringency settings have not yet been optimised for
-performance.
+* **Protein length ratio.** (`protratio`) The length ratio of the annotated proteins versus its top reference hit. Long-read genome assemblies are prone to indel errors, whereas short-read assemblies tend to be fragmented. In each case, protein annotations can be truncated or fragmented. SAAGA uses a protein length ratio to assess the extent of this problem. Ideally, annotated protein will, on average, be approximately the same length as orthologous proteins in a high-quality reference proteome. If the protein length ratio is heavily skewed below 1.0, this will indicate a problem with truncated and/or fragmented protein annotations. (This can also be cause by incorrect annotation settings that miss long introns, for example.) `proratio` captures the best value per gene, which is reported as a mean, median and std dev for the whole annotation.
 
+* **F1 score.** (`f1`, `f1_mean` and `f1_hits`). F1 extends the protein length ratio to an annotation consistency metric calculated using the formula: (2 X PROTCOV X REFCOV) / (PROTCOV + REFCOV) where PROTCOV is the proportion of the annotated protein covered by its best reference protein hit, and REFCOV is the proportion of the best reference protein hit covered by the annotated protein. For the proteome, `f1` is the sum of the proteome coverage, whereas `f1_mean` is the mean `f1` per gene and `f1_hit` is the mean for the subset of proteins with a reference hit. (The former evaluates annotation completeness, whereas the latter evaluates the general quality of the indiviudal annotations.) As with `protratio`, `f1` values close to 1 mean that the query protein closely matches the length of the hit protein, indicating high fidelity of the gene prediction model and underlying assembly.
+
+* **Completeness.** (`completeness`) The summed percentage coverage of reference proteome by the annotated proteome. This is checking for "missing" proteins. Unless `refdb=FILE` represents the same species, (as with other genome completeness metrics) it is unlikely that the theoretical maximum is 100%. Nevertheless, assembly and/or annotation errors should be more likely to reduced completeness, making it a useful comparative statistic.
+
+* **Purity.** (`purity`) The summed percentage reference coverage of the annotated proteome, i.e. the reciprocal of completeness. This is checking for "extra" proteins, which may be indicative of either contamination (check with `taxonomy` mode) or false positive gene predictions. Note that an incomplete or divergent reference proteome will also result in low purity. As with completeness, it is unlikely that the theoretical maximum is 100%, but it should be a useful comparative statistic.
+
+* **Homology.** (`homology`) The percentage of annotated genes with any hit in reference. As with `purity`, this statistic gives an indication of contamination or false predictions, but without requiring good coverage of individudal genes.
+
+* **Orthology.** (`orthology`) The percentage of annotated genes with reciprocal best hits in the reference proteome. This should increase as assembly/annotation redundancy and duplication is decreased. As with `completeness` and `purity`, it is very unlikely to reach 100% due to lineage-specific duplications and deletions.
+
+* **Duplicity.** (`duplicity`) The mean number of annotated genes sharing the same best reference hit. This is somewhat analogous to the "Duplicated" part of the BUSCO score, but does not enforce an minimum coverage cutoffs. It can be useful for assessing the success of purging haplotigs, for example.
+
+* **Compression.** (`compression`) The number of unique annotated genes that were the top hit for reference proteins, divided by the total number of reference proteins with a hit. This is the inverse of `duplicity` and big deviations from 100% can indicate either redundancy in the reference proteome, or missing members of gene families.
+
+* **Multiplicity.** (`multiplicity`) The ratio of total number of annotated genes to reference proteins. This gives a broad ballpark indication of the completeness and stringency of the genome annotation. Big deviations from 1 need some explanation, whether that is genome/annotation incompleteness (under 1) or an excess of low quality annotations and/or duplications (over 1).
+
+**NOTE:** MMseqs2 stringency settings have not yet been optimised for performance. Results of `assess` mode should be used primarily for comparisons between annotation, rather than treated as an absolute truth in terms of completeness etc.
+
+**NOTE:** To use SAAGA for assembly assessment (rather than *annotation* assessment), the rapid homology-based gene prediction program GEMOMA is recommended to generate a draft annotation.
 
 ---
 
 ## Annotation annotation mode [annotate=T]
 
 Based on MAKER2 renaming, this mode will use the top hit to reference proteins (e.g. SwissProt) to add
-descriptions to predicted gene and proteins.
+descriptions to predicted gene and proteins. Currently, `annotate` mode is explicitly designed to work with Uniprot format sequences, and will parse the description, organism (`OS=`) and gene (`GN=` where available) for the top reference hit. Proteins will then be renamed:
 
-_Details to follow._
+    Similar to $GENE: $DESCRIPTION [$ORGANISM]
+
+or:
+
+    Similar to $DESCRIPTION [$ORGANISM]
+
+If no `OS=` tag is found, renaming will be simpler:
+
+    Similar to $DESCRIPTION
+
+In each case, the description is appended with coverage and homology details, in the form `(X% cov @Y%id)`, as generated from the `refcov` and `pident` statistics from MMseqs2.
+
+Protein sequences with updated descriptions will be output to `*.renamed.faa`. If `cdsin=FILE` was provided, the corresponding transcripts will be output to `*.renamed.fna`.
 
 ---
 
 ## Longest protein mode [longest=T]
 
 This will extract the longest protein per gene, e.g. for reduced `Duplicated` ratings in BUSCO completeness
-estimates.
+estimates. The longest protein sequence per gene will be output to `*.longest.faa` and the corresponding transcripts (if `cdsin=FILE` given) to `*.longest.fna`.
 
-_Details to follow._
-
----
-
-## Annotation summarise mode [summarise=T]
-
-This mode will summarise the annotation from a GFF file. This is also executed as part of the `assess` mode.
-
-_Details to follow._
+**NOTE:** This will include any new descriptions from `annotate` mode.
 
 ---
 
-## MMSeq2 preparation mode [mmseq=T]
+## MMseqs2 preparation mode [mmseq=T]
 
-This run the mmseq2 steps in preparation for further analysis. It is primarily for debugging or when runs need
-to be split over multiple systems.
-
-_Details to follow._
+This run the MMseqs2 steps in preparation for further analysis. It is primarily for debugging or when runs need
+to be split over multiple systems. (See **MMseqs Searches**, above.)
 
 ---
+
+## Summarise taxonomic assignments for contamination assessments [taxonomy=T]
+
+Taxonomy mode combines the MMseqs2 `easy-taxonomy` with GFF parsing to perform taxonomic analysis of the input
+proteome and any subsets given by `taxsubsets=LIST`. Taxonomic assignments are mapped onto genes as well as assembly scaffolds and (if `assembly=FILE` is given) contigs.
+
+The first step is to run MMseqs2:
+
+    mmseqs easy-taxonomy $PROTEOME $TAXDB $TAXBASE $TMPDIR
+
+Where `$PROTEOME` is the proteome provided with `seqin=FILE`, `$TAXDB` is a MMseqs2 taxonomic database (see below for creation), provided with `taxdb=FILE`, `$TAXBASE` is the `easy-taxonomy` output prefix, and `$TMPDIR` is the temporary directory (default `tmp`). If pre-existing results exist (`$TAXBASE._report` and `$TAXBASE_lca.tsv`) then these will be loaded, unless `force=T` is set. If MMseqs2 is not installed, pre-computed results *must* be provided. In principle, `report` and `lca.tsv` files generate by other tools should work as long as the format is the same.
+
+The core of taxonomy mode is the MMSeqs2 "Lowest Common Ancestor" (LCA) assignment, in which each sequence is associated with the lowest unabmigious taxonomic rank possible. Where amibiguity exists, a sequence will be assigned to a higher level. Higher levels also receive all the taxonomic assignments of their daughter taxa, and so the sequence count for any given taxonomic group will always be equal or greater than its lower subdivisions. Conceptually, SAAGA separates out the counts into `taxnum`, which are counts at that level or below, and `taxpure`, which are the numbers assigned specifically to that level. (i.e. `taxnum` will be the sum of `taxpure` for that taxonomic group and all lower divisions.) See the MMseqs2 documentation for more details.
+
+### Taxonomy overview
+
+SAAGA will first read in the `*_report` file to build its internal taxonomy tree for the samples. By default, mmseqs will report all possible taxonomic levels, and SAAGA will retain the following:
+
+    species, species subgroup, species group, subgenus, genus, subtribe, tribe, subfamily, family, superfamily, parvorder, infraorder, suborder, order, superorder, infraclass, subclass, class, superclass, subphylum, phylum, superphylum, subkingdom, kingdom, superkingdom
+
+This can be reduced further by specifying a subset of taxonomic levels of interest with `taxlevels=LIST`. Any missing levels, along with
+"no rank" or "clade" taxa (except `unclassified`, `root`, and `cellular organisms`), will be mapped to the next highest taxonomic level. Any MMseqs2 assignments to that level will be transferred to the higher level. Any taxa failing to meet the `mintaxnum=INT` threshold (default=2) will also be mapped onto higher levels.
+
+Next, the `*_lca.tsv` file is read and mapped onto the `gffin=FILE` GFF file to assign proteins to genes and
+sequences. The lowest-level hit for each gene will be kept, remapping to `taxlevels` as required. These
+collated ratings will be output to `*.lca_genes.tsv` and `*.lca_genes.gff` Gene ratings are then summed for each assembly sequence, and the dominant
+classification for each taxonomic level established for (a) each sequence, and (b) the whole dataset. Full
+collated ratings will be output to `*.taxolotl_report.tsv`. Ratings per sequence are output to `*.taxbyseq.tsv`. Dominant taxa are reported in the log file as `#BEST` entries.
+
+To flag contamination, each sequence is assessed against the dominant taxonomic rating at each taxonomic level.
+The percentage of genes matching each dominant rating is reported for each sequence in `*.taxolotl.tsv`
+along with the number of genes with a rating at that level, separated with a `|`. This will exclude any genes
+without ratings at that taxonomic level. A `:consensus:` entry will also report the overall values for the whole
+assembly.
+
+Any sequences that have a dominant taxonomic label deviating from the overall consensus at any ranking levels
+set by `taxwarnrank=X` (default family) or above will raise a contamination warning and be output in the log file with a `#BADTAX` rating. These sequences will have their dominant taxon and it's
+precentage appended to the consensus percentage, also separated by `|`. For example, `25.00|20|Chordata|50.00`
+would indicate that 25% of the 20 genes with ratings at that level matched the consensus, whilst the dominant
+classification was `Chordata` with 50% of 20 rated genes assigned to this category. Such sequences will also have `badtax` rating in the `rating` field of `*.taxolotl.tsv`. Sequences matching the dominant taxa will have a `goodtax` rating, whilst sequences without any genes mapped onto taxa by MMseqs2 will be rated `notax`.
+
+Good, Bad and missing sequence counts will be summarised in the log file in `#BEST`, `BADTAX`, and `#NOTAX` entries.
+Sequence subsets are output to `*.id` and `*.fasta` files, and summarised along with the full assembly in
+`*.seqsummary.tsv`. (Any ratings without sequences will not be output/summarised.) If `assembly=FILE` is provided,
+sequences without genes will also be summarised. Taxonomy ratings for these subsets are also output to
+`*.$RATING.taxolotl_report.tsv` files. Any sequence subsets provided by `taxsubsets=LIST` (see below) will also be
+summarised in `*.$SUBSET.taxolotl_report.tsv` files. It is recommended that all the MMseqs2 `_report` file is loaded
+with all the `*.taxolotl_report.tsv` for visualisation with [Pavian](https://github.com/fbreitwieser/pavian)
+(Breitwieser FP and Salzberg SL (2020) [Bioinformatics 36(4):1303-1304](https://doi.org/10.1093/bioinformatics/btz715))
+through its [Shiny App](https://fbreitwieser.shinyapps.io/pavian/).
+
+Finally, if `assembly=FILE` is provided (unless `taxbycontig=F`), contigs will be extracted by splitting scaffolds on `mingap=INT` (default 10) consecutive `N`s. Genes will be remapped onto contigs as with sequences, and taxonomic ratings output to `*.taxbyctg.tsv` and `*.ctgtaxolotl.tsv`. These are the contig equivalents of `*.taxbyseq.tsv` and `*.taxolotl.tsv`. Contigs without taxonomic ratings will be listed in the log file with `#BADTAX` entries, unless already reported as an assembly sequence.
+
+### Main taxonomy outputs
+
+Outputs will be given a file prefix set by `taxbase=X`. By default, this will be `$SEQBASE.$TAXADB`, where
+`$SEQBASE` is the basename of `seqin=FILE` and `$TAXADB` is the taxonomy database set by `taxdb=FILE`.
+
+The main mmseqs `easy-taxonomy` output will generate:
+
+* `*_lca.tsv` = best assignments per protein sequence (protein, taxid, rank, taxname): required.
+* `*_report` = text summary of overall taxonomy that can be loaded by Pavian etc.: required.
+* `*_tophit_aln` = top database hits for each protein (not currently used): not required.
+* `*_tophit_report` = taxonomic classification of the top hit proteins: not required.
+
+In addition, Taxolotl will output:
+
+* `*.taxbyseq.tsv` = Rating counts for each taxonomic group by assembly sequence (scaffold).
+* `*.taxolotl_report.tsv` = Collated Kraken-style report file.
+* `*.lca_genes.tsv` = Best assignments (lowest taxonomic level) for each gene.
+* `*.lca_genes.gff` = GFF file with Taxolotly ratings for each gene.
+* `*.taxolotl.tsv` = Tab separated file with consensus taxonomic assignment at each taxonomic rank, and ratings per sequence.
+* `*.$SUBSET.id` = Sequence identifiers for assembly subsets based on Taxolotl ratings.
+* `*.$SUBSET.fasta` = Fasta files of assembly subsets based on Taxolotl ratings.
+* `*.seqsummary.tsv` = Summary statistics for assembly subset fasta files.
+* `*.taxbyctg.tsv` = Rating counts for each taxonomic group by assembly contig.
+* `*.ctgtaxolotl.tsv` = Taxolotl ratings by assembly contig.
+
+#### Taxonomy by sequence output
+
+If `taxbyseq=T` then an addition `*.taxbyseq.tsv` file will be produced, with the following fields:
+
+* `seqname` = assembly sequence name
+* `genenum` = number of genes parsed for that sequence
+* `protnum` = number of proteins parsed for that sequence
+* `rank` = taxonomic rank of rating
+* `genetax` = number of genes with assignment at that level
+* `taxid` = taxonomic label identifier number
+* `taxname` = taxonomic label name at that rank
+* `taxperc` = percentage assignment to this rank or lower
+* `taxnum` = number of genes assigned to this rank or lower
+* `taxpure` = number of genes assigned to this rank specifically
+
+### Sequence subset analysis
+
+In addition to the main output for the whole proteome, any subsets given by `taxsubsets=LIST` will have their own `*.taxolotl_report.tsv` file, which can be visualised with Pavian. These must be lists of IDs that match the assembly sequence names in the GFF file. Subsets will be named after the subset file prefix, e.g. `assembly.suspect.id` would generate `*.assembly.suspect.taxolotl_report.tsv`.
+
+
+### Generating a taxonomic database
+
+Please see the MMseqs2 documentation for generating a taxonomic database. To date, Taxolotl has been tested with taxonomy databases generated from NCBI nr, using BLAST+ and MMSeqs2 and the NCBI taxonomy dump (<https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump.tar.gz>):
+
+```
+blastdbcmd -db $NCBIPATH/nr -entry all > ncbinr.faa
+blastdbcmd -db $NCBIPATH/nr -entry all -outfmt "%a %T" > ncbinr.faa.taxidmapping
+
+mmseqs createdb ncbinr.faa ncbinr.faaDB
+mmseqs createtaxdb ncbinr.faaDB tmp --ncbi-tax-dump taxonomy/ --tax-mapping-file ncbinr.faa.taxidmapping
+mmseqs createindex ncbinr.faaDB tmp
+```
+
+If the assembly is already in RefSeq, it is recommended that the taxa of the assembly is removed before running Taxolotl, e.g.:
+
+```
+mmseqs filtertaxseqdb ncbinr.faaDB seqTaxNoQueryDB --taxon-list '!178133,!38626'
+```
+
+If getting an error that the `*.dmp` files are missing, these can be added with soft links from the `taxonomy/` directory containing the NCBI taxonomy dump.
+
+
+### Simple ORF mode
+
+If no proteins are given, ORFs will be generated by `SeqSuite` with default settings `minorf=100 rftran=6 terminorf=50 orfgaps=F`, i.e. ORFs of 100+ amino acids from all six reading frames, or 50+ amino acids if truncated at the end of a sequence. ORFs will not span assembly gaps, and any ambiguous (`X`) translations will be replaced with stop codons (`*`), unless `orfgaps=T` is set. Note that, due to introns, it is expected that these ORFs will often represent partial coding sequences, and many will be random junk translations.
+
+The idea of ORF mode is to provide a quick, crude impression of the taxonomic profile. However, for large assemblies it can be very slow to process.
+
+In ORF mode, each ORF is assumed to represent a different gene, although this may not be the case. Currently, `SeqSuite` will not generate a GFF file for the ORFs. As a result, the `taxbycontig` output is not available.
+
+
 
 
 
 <br>
-<small>&copy; 2020 Richard Edwards | richard.edwards@unsw.edu.au</small>
+<small>&copy; 2021 Richard Edwards | richard.edwards@unsw.edu.au</small>

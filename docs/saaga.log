@@ -1,10 +1,13 @@
 #~~#	#~+~~+~#	#~~#
-#LOG	00:00:00	Activity Log for SAAGA V0.5.4: Mon Dec  7 15:00:48 2020
-#DIR	00:00:00	Run from directory: /Users/redwards/onedrive/OneDrive - UNSW/projects/SAAGA-Nov20/githubdev/docs
+#LOG	00:00:00	Activity Log for SAAGA V0.7.9: Thu Sep 19 18:12:54 2024
+#WARN	00:00:00	Python 3.x detected but not fully supported. Please report odd behaviour.
+#DIR	00:00:00	Run from directory: /Users/00110092/Library/CloudStorage/OneDrive-UNSW/code/saaga/docs
 #ARG	00:00:00	Commandline arguments: basefile=saaga dochtml newlog
 #CMD	00:00:00	Full Command List: log=saaga.log basefile=saaga dochtml newlog
 #VIO	00:00:00	Verbosity: 1; Interactivity: 0.
+#NOTE	00:00:00	Interactivity could cause problems for queued HPC jobs etc. If so, set i=-1.
 #RMD	00:00:00	RMarkdown SAAGA documentation output to saaga.docs.Rmd
 #RCMD	00:00:00	Rscript -e 'library(rmarkdown); rmarkdown::render("saaga.docs.Rmd", "html_document")'
-#RCMD	00:00:04	saaga.docs.html generated from saaga.docs.Rmd
-#LOG	00:00:04	SAAGA V0.5.4 End: Mon Dec  7 15:00:53 2020
+#RCMD	00:00:00	saaga.docs.html generated from saaga.docs.Rmd
+#WARN	00:00:00	1 warning messages: check log for details.
+#LOG	00:00:00	SAAGA V0.7.9 End: Thu Sep 19 18:12:55 2024
